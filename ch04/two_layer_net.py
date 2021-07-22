@@ -76,3 +76,45 @@ class TwoLayerNet:
         grads['b1'] = np.sum(dz1, axis=0)
 
         return grads
+
+class LayerNet:
+
+    def __init__(self, shape, weight_init_std = 0.01):
+        self.W = []
+        self.W.append(np.array([]))
+        for i in range(1, len(shape)):
+            self.W.append(weight_init_std * np.random.randn(shape[i - 1], shape[i]))
+        self.b = []
+        self.b.append(np.array([]))
+        for i in range(1, len(shape)):
+            self.b.append(np.zeros(shape[i]))
+
+    def predict(self, x):
+        for i in range(1, len(self.W) - 1):
+            x = sigmoid(x @ self.W[i] + self.b[i])
+        x = softmax(x @ self.W[-1] + self.b[-1])
+        return x
+    
+    def loss(self, x, t):
+        y = self.predict(x)
+        return cross_entropy_error(y, t)
+
+    def accuracy(self, x, t):
+        y = self.predict(x)
+        y = np.argmax(y, axis=1)
+        t = np.argmax(t, axis=1)
+        
+        acc = np.sum(y == t) / float(x.shape[0])
+        return acc
+
+    def numerical_gradient(self, x, t):
+        loss_W = lambda W: self.loss(x, t)
+
+        grad_W = [np.array([])]
+        for i in range(1, len(self.W)):
+            grad_W.append(numerical_gradient(loss_W, self.W[i]))
+        grad_b = [np.array([])]
+        for i in range(1, len(self.b)):
+            grad_b.append(numerical_gradient(loss_W, self.b[i]))
+
+        return grad_W, grad_b

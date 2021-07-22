@@ -75,3 +75,72 @@ class TwoLayerNet:
         grads['W2'], grads['b2'] = self.layers['Affine2'].dW, self.layers['Affine2'].db
 
         return grads
+
+class LayerNet:
+
+    def __init__(self, shape, weight_init_std = 0.01):
+        self.W = []
+        self.W.append(np.array([]))
+        for i in range(1, len(shape)):
+            self.W.append(weight_init_std * np.random.randn(shape[i - 1], shape[i]))
+        self.b = []
+        self.b.append(np.array([]))
+        for i in range(1, len(shape)):
+            self.b.append(np.zeros(shape[i]))
+
+        self.layers = []
+        for i in range(1, len(self.W)):
+            self.layers.append(Affine(self.W[i], self.b[i]))
+            if i != len(self.W) - 1:
+                self.layers.append(Relu())
+        self.layers.append(SoftmaxWithLoss())
+
+    def predict(self, x):
+        for layer in self.layers[:-1]:
+            x = layer.forward(x)
+
+        return x
+    
+    def loss(self, x, t):
+        y = self.predict(x)
+        return self.layers[-1].forward(y, t)
+
+    def accuracy(self, x, t):
+        y = self.predict(x)
+        y = np.argmax(y, axis=1)
+        if t.ndim != 1:
+            t = np.argmax(t, axis=1)
+        
+        acc = np.sum(y == t) / float(x.shape[0])
+        return acc
+
+    def numerical_gradient(self, x, t):
+        loss_W = lambda W: self.loss(x, t)
+
+        grad_W = [np.array([])]
+        for i in range(1, len(self.W)):
+            grad_W.append(numerical_gradient(loss_W, self.W[i]))
+        grad_b = [np.array([])]
+        for i in range(1, len(self.b)):
+            grad_b.append(numerical_gradient(loss_W, self.b[i]))
+
+        return grad_W, grad_b
+
+    def gradient(self, x, t):
+        self.loss(x, t)
+
+        dout = 1
+        dout = self.layers[-1].backward(dout)
+        layers = self.layers[:-1].copy()
+        layers.reverse()
+        for layer in layers:
+            dout = layer.backward(dout)
+
+        gradW = [np.array([])]
+        gradB = [np.array([])]
+        for i in range(0, len(self.layers), 2):
+            gradW.append(self.layers[i].dW)
+            gradB.append(self.layers[i].db)
+
+        return gradW, gradB
+    
